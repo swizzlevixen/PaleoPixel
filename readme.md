@@ -27,7 +27,11 @@ http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-
 - The RPi's 5V pins will probably not be enough to power a string of any significant length. Use an external power supply of appropriate amperage
 - Be sure to connect the RPi ground to the LED strip's ground
 
+## License
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">PaleoPixel</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/bobtiki/PaleoPixel" property="cc:attributionName" rel="cc:attributionURL">Mark Boszko</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.<br />Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code" rel="dct:source">https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code</a>.
 
 ## Version History:
 
 - **1.0** - 2016-02-27 - Started development and complete rewrite, all in the same day!
+

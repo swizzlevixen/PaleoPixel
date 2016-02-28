@@ -30,6 +30,12 @@ http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-
 - Be sure to connect the RPi ground to the LED strip's ground
 
 
+License:
+
+- Creative Commons Attribution 4.0 International License (CC-BY)
+- http://creativecommons.org/licenses/by/4.0/
+
+
 Version History:
 
 - 1.0 - 2016-02-27 - Started development and complete rewrite, all in the same day!
