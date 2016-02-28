@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 """
-rpi_ws2801
-
-The “PaleoPixel” class is an Adafruit NeoPixel library port
-  to control WS2801 pixels from Raspberry Pi hardware SPI.
-  Also includes “strandtest” functions and a self-test if run as main.
+Adafruit NeoPixel library port to control the older WS2801 pixels from 
+  Raspberry Pi hardware SPI. Includes Adafruit “strandtest”-style functions
+  and performs a self-test if run as main.
 
 
-Author: Mark Boszko (boszko+ws2801@gmail.com)
+Author: Mark Boszko (boszko+paleopixel@gmail.com)
 
 Raspberry Pi SPI driver code for WS2801 pixels based on Adafruit_LEDpixels.py
 https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code
@@ -34,7 +32,7 @@ TODO: blog link
 
 Version History:
 
-0.6 - Complete rewrite
+0.6 - Complete rewrite, 2016-02-27
 0.5 - Begin development
 
 """
@@ -45,7 +43,6 @@ import RPi.GPIO as GPIO, time, os
 
 # LED strip configuration:
 LED_COUNT      = 50      # Number of LED pixels.
-LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest (not currently used)
 
 #####
 # 
