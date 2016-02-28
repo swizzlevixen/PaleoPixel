@@ -57,11 +57,6 @@ YELLOW = bytearray(b'\xff\xff\x00')
 RAINBOW = [RED, GREEN, BLUE, YELLOW, VIOLET, ORANGE, GRAY, OLIVE, BROWN]
 
 
-def write_stream(pixels):
-    spidev.write(pixels)
-    return
-
-
 def correct_pixel_brightness(pixel):
     corrected_pixel = bytearray(3)
     corrected_pixel[0] = int(pixel[0] / 1.1)
@@ -90,7 +85,7 @@ def pixelinvaders():
             pixel_to_filter = correct_pixel_brightness(pixel_to_adjust)
             pixels[((pixel_index) * PIXEL_SIZE):] = filter_pixel(pixel_to_filter[:], 1)
 
-        write_stream(pixels)
+        spidev.write(pixels)
         spidev.flush()
 
 
@@ -118,7 +113,7 @@ def strip():
     print "Displaying..."
     while True:
         for x in range(image_width):
-            write_stream(column[x])
+            spidev.write(column[x])
             spidev.flush()
             time.sleep(0.001)
         time.sleep((args.refresh_rate / 1000.0))
@@ -157,7 +152,7 @@ def array():
 
         pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
         print "Displaying..."
-        write_stream(pixel_output)
+        spidev.write(pixel_output)
         spidev.flush()
         time.sleep((args.refresh_rate) / 1000.0)
 
@@ -185,7 +180,7 @@ def pan():
                 pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
 
         print "Displaying..."
-        write_stream(pixel_output)
+        spidev.write(pixel_output)
         spidev.flush()
         time.sleep((args.refresh_rate) / 1000.0)
 
@@ -195,7 +190,7 @@ def all_off():
     print "Turning all LEDs Off"
     for led in range(args.num_leds):
         pixel_output[led * PIXEL_SIZE:] = filter_pixel(BLACK, 1)
-    write_stream(pixel_output)
+    spidev.write(pixel_output)
     spidev.flush()
 
 
@@ -204,7 +199,7 @@ def all_on():
     print "Turning all LEDs On"
     for led in range(args.num_leds):
         pixel_output[led * PIXEL_SIZE:] = filter_pixel(WHITE, 1)
-    write_stream(pixel_output)
+    spidev.write(pixel_output)
     spidev.flush()
 
 
@@ -219,14 +214,14 @@ def fade():
                 current_color[:] = filter_pixel(color[:], brightness)
                 for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
                     pixel_output[pixel_offset:] = current_color[:]
-                write_stream(pixel_output)
+                spidev.write(pixel_output)
                 spidev.flush()
                 time.sleep((args.refresh_rate) / 1000.0)
             for brightness in [x * 0.01 for x in range(100, 0, -1)]:
                 current_color[:] = filter_pixel(color[:], brightness)
                 for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
                     pixel_output[pixel_offset:] = current_color[:]
-                write_stream(pixel_output)
+                spidev.write(pixel_output)
                 spidev.flush()
                 time.sleep((args.refresh_rate) / 1000.0)
 
@@ -244,7 +239,7 @@ def chase():
                 pixel_output[((pixel_index) * PIXEL_SIZE):] = filter_pixel(current_color[:], 1)
                 pixel_output += '\x00' * ((args.num_leds - 1 - pixel_index) * PIXEL_SIZE)
 
-                write_stream(pixel_output)
+                spidev.write(pixel_output)
                 spidev.flush()
                 time.sleep((args.refresh_rate) / 1000.0)
                 pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0)
