@@ -138,7 +138,7 @@ def colorWipe(strip, color, wait_ms=50):
         time.sleep(wait_ms/1000.0)
 
 def theaterChase(strip, color, wait_ms=50, iterations=10):
-    """Movie theater light style chaser animation."""
+    """Movie theater marquee style chaser animation."""
     for j in range(iterations):
         for q in range(3):
             for i in range(0, strip.numPixels(), 3):
@@ -176,7 +176,7 @@ def rainbowCycle(strip, wait_ms=20, iterations=5):
         time.sleep(wait_ms/1000.0)
 
 def theaterChaseRainbow(strip, wait_ms=50):
-    """Rainbow movie theater light style chaser animation."""
+    """Rainbow movie theater marquee style chaser animation."""
     for j in range(256):
         for q in range(3):
             for i in range(0, strip.numPixels(), 3):
@@ -196,12 +196,11 @@ def theaterChaseRainbow(strip, wait_ms=50):
 
 # Main program logic follows:
 if __name__ == '__main__':
-    # Create PaleoPixel object with appropriate configuration.
+    # Create PaleoPixel object with appropriate number of LEDs.
     strip = PaleoPixel(LED_COUNT)
-    print('strip.__init__')
-    # Intialize the library (must be called once before other functions).
+    # Reset the library (does not actually need to be called before
+    # other functions, but we're testing here).
     strip.begin()
-    print('strip.begin')
 
     print('Press Ctrl-C to quit.')
     while True:
