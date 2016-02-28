@@ -202,34 +202,7 @@ RAINBOW = [AQUA, AQUAMARINE, AZURE, BEIGE, BISQUE, BLANCHEDALMOND, BLUE, BLUEVIO
 
 
 def write_stream(pixels):
-    if args.chip_type == "LPD6803":
-        pixel_out_bytes = bytearray(2)
-        spidev.write(bytearray(4))
-        pixel_count = len(pixels) / PIXEL_SIZE
-        for pixel_index in range(pixel_count):
-
-            pixel_in = bytearray(pixels[(pixel_index * PIXEL_SIZE):((pixel_index * PIXEL_SIZE) + PIXEL_SIZE)])
-
-            pixel_out = 0b1000000000000000  # bit 16 must be ON
-            pixel_out |= (pixel_in[0] & 0x00F8) << 7  # RED is bits 11-15
-            pixel_out |= (pixel_in[1] & 0x00F8) << 2  # GREEN is bits 6-10
-            pixel_out |= (pixel_in[2] & 0x00F8) >> 3  # BLUE is bits 1-5
-
-            pixel_out_bytes[0] = (pixel_out & 0xFF00) >> 8
-            pixel_out_bytes[1] = (pixel_out & 0x00FF) >> 0
-            spidev.write(pixel_out_bytes)
-        spidev.write(bytearray(len(pixels) / 8 + 1))
-    elif args.chip_type == "LPD8806":
-        spidev.write(pixels)
-        spidev.write(bytearray(b'\x00\x00\x00'))  # zero fill the last to prevent stray colors at the end
-        spidev.write(bytearray(b'\x00'))
-    elif args.chip_type == "SM16716":
-        #Each frame for SM17616 starts with 50bits set to '0'
-        #Also every pixel needs to start with a bit set to '1'
-        spidev.write(bytearray(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00') + pixels)
-    else:
-        spidev.write(pixels)
-
+    spidev.write(pixels)
     return
 
 
@@ -253,19 +226,13 @@ def pixelinvaders():
 
         pixels_in_buffer = len(data) / PIXEL_SIZE
 
-        if args.chip_type == "SM16716":
-            pixels = bytearray(pixels_in_buffer * PIXEL_SIZE_SM16716)
-        else:
-            pixels = bytearray(pixels_in_buffer * PIXEL_SIZE)
+        pixels = bytearray(pixels_in_buffer * PIXEL_SIZE)
 
         for pixel_index in range(pixels_in_buffer):
             pixel_to_adjust = bytearray(data[(pixel_index * PIXEL_SIZE):((pixel_index * PIXEL_SIZE) + PIXEL_SIZE)])
 
             pixel_to_filter = correct_pixel_brightness(pixel_to_adjust)
-            if args.chip_type == "SM16716":
-                pixels[((pixel_index) * PIXEL_SIZE_SM16716):] = filter_pixel(pixel_to_filter[:], 1)  # for every starting pixel a bit set to '1'
-            else:
-                pixels[((pixel_index) * PIXEL_SIZE):] = filter_pixel(pixel_to_filter[:], 1)
+            pixels[((pixel_index) * PIXEL_SIZE):] = filter_pixel(pixel_to_filter[:], 1)
 
         write_stream(pixels)
         spidev.flush()
@@ -281,30 +248,16 @@ def strip():
     print "Allocating..."
     column = [0 for x in range(image_width)]
     for x in range(image_width):
-        if args.chip_type == "SM16716":
-            column[x] = bytearray(args.array_height * PIXEL_SIZE_SM16716)
-        else:
-            column[x] = bytearray(args.array_height * PIXEL_SIZE + 1)
+        column[x] = bytearray(args.array_height * PIXEL_SIZE + 1)
 
     print "Process Image..."
     for x in range(image_width):
         for y in range(args.array_height):
             value = input_image[x, y]
             y3 = y * 3
-            if args.chip_type == "LPD8806":
-                # Convert RGB into column-wise GRB bytearray list.
-                column[x][y3] = gamma[value[1]]
-                column[x][y3 + 1] = gamma[value[0]]
-                column[x][y3 + 2] = gamma[value[2]]
-            elif args.chip_type == "SM16716":
-                column[x][y3] = b'\x01'
-                column[x][y3 + 1] = value[0]
-                column[x][y3 + 2] = value[1]
-                column[x][y3 + 3] = value[2]
-            else:
-                column[x][y3] = value[0]
-                column[x][y3 + 1] = value[1]
-                column[x][y3 + 2] = value[2]
+            column[x][y3] = value[0]
+            column[x][y3 + 1] = value[1]
+            column[x][y3 + 2] = value[2]
 
     print "Displaying..."
     while True:
@@ -342,17 +295,11 @@ def array():
         value = bytearray(PIXEL_SIZE)
 
         # Create a byte array ordered according to the pixel map file
-        if args.chip_type == "SM16716":
-            pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE_SM16716)
-        else:
-            pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE + 1)
+        pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE + 1)
         for array_index in range(len(pixel_map)):
             value = bytearray(input_image[int(pixel_map[array_index][0]), int(pixel_map[array_index][1])])
 
-        if args.chip_type == "SM16716":
-            pixel_output[(array_index * PIXEL_SIZE_SM16716):] = filter_pixel(value[:], 1)
-        else:
-            pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
+        pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
         print "Displaying..."
         write_stream(pixel_output)
         spidev.flush()
@@ -374,18 +321,12 @@ def pan():
     print "Remapping"
 
     # Create a byte array ordered according to the pixel map file
-    if args.chip_type == "SM16716":
-        pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE_SM16716)
-    else:
-        pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE + 1)
+    pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE + 1)
     while True:
         for x_offset in range(image_width - args.array_width):
             for array_index in range(len(pixel_map)):
                 value = bytearray(input_image[int(int(pixel_map[array_index][0]) + x_offset), int(pixel_map[array_index][1])])
-                if args.chip_type == "SM16716":
-                    pixel_output[(array_index * PIXEL_SIZE_SM16716):] = filter_pixel(value[:], 1)
-                else:
-                    pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
+                pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
 
         print "Displaying..."
         write_stream(pixel_output)
@@ -394,65 +335,41 @@ def pan():
 
 
 def all_off():
-    if args.chip_type == "SM16716":
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE_SM16716)
-    else:
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
+    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
     print "Turning all LEDs Off"
     for led in range(args.num_leds):
-        if args.chip_type == "SM16716":
-            pixel_output[led * PIXEL_SIZE_SM16716:] = SM16716BLACK
-        else:
-            pixel_output[led * PIXEL_SIZE:] = filter_pixel(BLACK, 1)
+        pixel_output[led * PIXEL_SIZE:] = filter_pixel(BLACK, 1)
     write_stream(pixel_output)
     spidev.flush()
 
 
 def all_on():
-    if args.chip_type == "SM16716":
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE_SM16716)
-    else:
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
+    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
     print "Turning all LEDs On"
     for led in range(args.num_leds):
-        if args.chip_type == "SM16716":
-            pixel_output[led * PIXEL_SIZE_SM16716:] = filter_pixel(WHITE, 1)
-        else:
-            pixel_output[led * PIXEL_SIZE:] = filter_pixel(WHITE, 1)
+        pixel_output[led * PIXEL_SIZE:] = filter_pixel(WHITE, 1)
     write_stream(pixel_output)
     spidev.flush()
 
 
 def fade():
-    if args.chip_type == "SM16716":
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE_SM16716)
-        current_color = bytearray(PIXEL_SIZE_SM16716)
-    else:
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
-        current_color = bytearray(PIXEL_SIZE)
+    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
+    current_color = bytearray(PIXEL_SIZE)
     print "Displaying..."
 
     while True:
         for color in RAINBOW:
             for brightness in [x * 0.01 for x in range(0, 100)]:
                 current_color[:] = filter_pixel(color[:], brightness)
-                if args.chip_type == "SM16716":
-                    for pixel_offset in [(x * 4) for x in range(args.num_leds)]:
-                        pixel_output[pixel_offset:] = current_color[:]
-                else:
-                    for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
-                        pixel_output[pixel_offset:] = current_color[:]
+                for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
+                    pixel_output[pixel_offset:] = current_color[:]
                 write_stream(pixel_output)
                 spidev.flush()
                 time.sleep((args.refresh_rate) / 1000.0)
             for brightness in [x * 0.01 for x in range(100, 0, -1)]:
                 current_color[:] = filter_pixel(color[:], brightness)
-                if args.chip_type == "SM16716":
-                    for pixel_offset in [(x * 4) for x in range(args.num_leds)]:
-                        pixel_output[pixel_offset:] = current_color[:]
-                else:
-                    for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
-                        pixel_output[pixel_offset:] = current_color[:]
+                for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
+                    pixel_output[pixel_offset:] = current_color[:]
                 write_stream(pixel_output)
                 spidev.flush()
                 time.sleep((args.refresh_rate) / 1000.0)
@@ -460,10 +377,7 @@ def fade():
 
 if CWIID_ENABLED:
     def wiimote():
-        if args.chip_type == "SM16716":
-            pixel_output = bytearray(args.num_leds * PIXEL_SIZE_SM16716)
-        else:
-            pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
+        pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
         print 'Put Wiimote in discoverable mode now (press 1+2)...'
         global wiimote
         global wii_movetimeout
@@ -489,12 +403,8 @@ if CWIID_ENABLED:
 
     #is this needed; poling?
         wiimote.request_status()
-        if args.chip_type == "SM16716":
-            pixel_output[((pixel_index) * PIXEL_SIZE_SM16716):] = filter_pixel(wii_color[:], 1)
-            pixel_output += SM16716BLACK * ((args.num_leds - pixel_index))
-        else:
-            pixel_output[((pixel_index) * PIXEL_SIZE):] = filter_pixel(wii_color[:], 1)
-            pixel_output += '\x00' * ((args.num_leds + 1 - pixel_index) * PIXEL_SIZE)
+        pixel_output[((pixel_index) * PIXEL_SIZE):] = filter_pixel(wii_color[:], 1)
+        pixel_output += '\x00' * ((args.num_leds + 1 - pixel_index) * PIXEL_SIZE)
 
         write_stream(pixel_output)
         spidev.flush()
@@ -502,34 +412,22 @@ if CWIID_ENABLED:
 
 
 def chase():
-    if args.chip_type == "SM16716":
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE_SM16716)
-    else:
-        pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
+    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
     print "Displaying..."
     current_color = bytearray(PIXEL_SIZE)
     pixel_index = 0
     while True:
         for current_color[:] in RAINBOW:
             for pixel_index in range(args.num_leds):
-                if args.chip_type == "SM16716":
-                    pixel_output[((pixel_index - 2) * PIXEL_SIZE_SM16716):] = filter_pixel(current_color[:], 0.2)
-                    pixel_output[((pixel_index - 1) * PIXEL_SIZE_SM16716):] = filter_pixel(current_color[:], 0.4)
-                    pixel_output[((pixel_index) * PIXEL_SIZE_SM16716):] = filter_pixel(current_color[:], 1)
-                    pixel_output += SM16716BLACK * ((args.num_leds - pixel_index))
-                else:
-                    pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0.2)
-                    pixel_output[((pixel_index - 1) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0.4)
-                    pixel_output[((pixel_index) * PIXEL_SIZE):] = filter_pixel(current_color[:], 1)
-                    pixel_output += '\x00' * ((args.num_leds - 1 - pixel_index) * PIXEL_SIZE)
+                pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0.2)
+                pixel_output[((pixel_index - 1) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0.4)
+                pixel_output[((pixel_index) * PIXEL_SIZE):] = filter_pixel(current_color[:], 1)
+                pixel_output += '\x00' * ((args.num_leds - 1 - pixel_index) * PIXEL_SIZE)
 
                 write_stream(pixel_output)
                 spidev.flush()
                 time.sleep((args.refresh_rate) / 1000.0)
-                if args.chip_type == "SM16716":
-                    pixel_output[((pixel_index - 2) * PIXEL_SIZE_SM16716):] = SM16716BLACK
-                else:
-                    pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0)
+                pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0)
 
 
 gamma = bytearray(256)
@@ -543,45 +441,21 @@ def load_image():
 # Apply Gamma Correction and RGB / GRB reordering
 # Optionally perform brightness adjustment
 def filter_pixel(input_pixel, brightness):
-    if args.chip_type == "SM16716":
-        output_pixel = bytearray(PIXEL_SIZE_SM16716)
-    else:
-        output_pixel = bytearray(PIXEL_SIZE)
+    output_pixel = bytearray(PIXEL_SIZE)
 
     input_pixel[0] = int(brightness * input_pixel[0])
     input_pixel[1] = int(brightness * input_pixel[1])
     input_pixel[2] = int(brightness * input_pixel[2])
 
-    if args.chip_type == "LPD8806":
-        # Convert RGB into GRB bytearray list.
-
-        # Some LPD8806 strips use this ordering:
-        # output_pixel[0] = gamma[input_pixel[1]]
-        # output_pixel[1] = gamma[input_pixel[0]]
-        # output_pixel[2] = gamma[input_pixel[2]]
-
-        # While some others use this one:
-        output_pixel[0] = gamma[input_pixel[2]]
-        output_pixel[1] = gamma[input_pixel[0]]
-        output_pixel[2] = gamma[input_pixel[1]]
-    elif args.chip_type == "SM16716":
-        # ON bit at the pixel front
-        # What is gamma correction for?
-        output_pixel[0] = b'\x01'
-        output_pixel[1] = input_pixel[0]
-        output_pixel[2] = input_pixel[1]
-        output_pixel[3] = input_pixel[2]
-    else:
-        output_pixel[0] = gamma[input_pixel[0]]
-        output_pixel[1] = gamma[input_pixel[1]]
-        output_pixel[2] = gamma[input_pixel[2]]
+    output_pixel[0] = gamma[input_pixel[0]]
+    output_pixel[1] = gamma[input_pixel[1]]
+    output_pixel[2] = gamma[input_pixel[2]]
     return output_pixel
 
 
 parser = argparse.ArgumentParser(add_help=True, version='1.0', prog='pixelpi.py')
 subparsers = parser.add_subparsers(help='sub command help?')
 common_parser = argparse.ArgumentParser(add_help=False)
-common_parser.add_argument('--chip', action='store', dest='chip_type', default='WS2801', choices=['WS2801', 'LPD8806', 'LPD6803', 'SM16716'], help='Specify chip type LPD6803, LPD8806, WS2801 or SM16716')
 common_parser.add_argument('--verbose', action='store_true', dest='verbose', default=True, help='enable verbose mode')
 common_parser.add_argument('--spi_dev', action='store', dest='spi_dev_name', required=False, default='/dev/spidev0.0', help='Set the SPI device descriptor')
 common_parser.add_argument('--refresh_rate', action='store', dest='refresh_rate', required=False, default=500, type=int, help='Set the refresh rate in ms (default 500ms)')
@@ -624,26 +498,12 @@ args = parser.parse_args()
 spidev = file(args.spi_dev_name, "wb")
 # Calculate gamma correction table. This includes
 # LPD8806-specific conversion (7-bit color w/high bit set).
-if args.chip_type == "LPD8806":
-    for i in range(256):
-        gamma[i] = 0x80 | int(pow(float(i) / 255.0, 2.5) * 127.0 + 0.5)
+for i in range(256):
+    gamma[i] = int(pow(float(i) / 255.0, 2.5) * 255.0)
 
-if args.chip_type == "SM16716":
-    for i in range(256):
-        gamma[i] = int(pow(float(i) / 255.0, 2.5) * 255.0)
-
-if args.chip_type == "WS2801":
-    for i in range(256):
-        gamma[i] = int(pow(float(i) / 255.0, 2.5) * 255.0)
-
-#LPD6803 has 5 bit color, this seems to work but is not exact.
-if args.chip_type == "LPD6803":
-    for i in range(256):
-        gamma[i] = int(pow(float(i) / 255.0, 2.0) * 255.0 + 0.5)
 args.func()
 
 
-#print "Chip Type             = %s" % args.chip_type
 #print "File Name             = %s" % args.filename
 #print "Display Mode          = %s" % args.mode
 #print "SPI Device Descriptor = %s" % args.spi_dev_name
