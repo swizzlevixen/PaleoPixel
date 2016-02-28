@@ -16,6 +16,8 @@ https://github.com/jgarff/rpi_ws281x
 
 ## Usage
 
+I'm specifically using this with two of the [12mm Diffused Thin Digital RGB LED Pixels (Strand of 25) - WS2801](https://www.adafruit.com/products/322) from Adafruit, but it should work with any [WS2801](http://www.adafruit.com/datasheets/WS2801.pdf)-controlled LED strands.
+
 You'll need to translate 3.3V SPI logic levels from the Raspberry Pi to 5V. Several options are possible, as laid out in [Adafruit's tutorial](https://learn.adafruit.com/neopixels-on-raspberry-pi/wiring). I also have a suggested circuit on my blog post that describes this project in more detail:
 
 http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-control
