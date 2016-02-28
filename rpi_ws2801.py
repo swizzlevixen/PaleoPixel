@@ -41,11 +41,6 @@ from PIL import Image
 
 # 3 bytes per pixel
 PIXEL_SIZE = 3
-PIXEL_SIZE_SM16716 = 4
-
-# My chips are not working if you send all bits with zero (just the first led is turning off)
-# Change the value if pure black is working for you. Or use filter_pixel(BLACK, 1)
-SM16716BLACK = bytearray(b'\x01\x01\x01\x01')
 
 BLACK = bytearray(b'\x00\x00\x00')
 AQUA = bytearray(b'\x00\xff\xff')
