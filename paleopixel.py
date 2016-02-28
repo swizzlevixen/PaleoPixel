@@ -21,7 +21,7 @@ You'll need to translate 3.3V SPI logic levels from the Raspberry Pi to 5V.
 Several options are possible, and I have a suggested circuit on my blog post
 that describes this project in more detail:
 
-TODO: blog link
+http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-control
 
 - Connect the RPi's MOSI output to the SDI (Serial Data Input) on the WS2801s
 - Connect the RPi SCLK clock output to CKI (ClocK Input) on the WS2801
@@ -32,8 +32,7 @@ TODO: blog link
 
 Version History:
 
-0.6 - Complete rewrite, 2016-02-27
-0.5 - Begin development
+- 1.0 - 2016-02-27 - Started development and complete rewrite, all in the same day!
 
 """
 
