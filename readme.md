@@ -16,7 +16,7 @@ https://github.com/jgarff/rpi_ws281x
 
 ## Usage
 
-You'll need to translate 3.3V SPI logic levels from the Raspberry Pi to 5V. Several options are possible, and I have a suggested circuit on my blog post that describes this project in more detail:
+You'll need to translate 3.3V SPI logic levels from the Raspberry Pi to 5V. Several options are possible, as laid out in [Adafruit's tutorial](https://learn.adafruit.com/neopixels-on-raspberry-pi/wiring). I also have a suggested circuit on my blog post that describes this project in more detail:
 
 http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-control
 
