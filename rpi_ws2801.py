@@ -36,8 +36,6 @@ import csv
 import socket
 import time
 
-from PIL import Image
-
 
 # 3 bytes per pixel
 PIXEL_SIZE = 3
@@ -64,125 +62,6 @@ def correct_pixel_brightness(pixel):
     corrected_pixel[2] = int(pixel[2] / 1.3)
 
     return corrected_pixel
-
-
-def pixelinvaders():
-    print ("Start PixelInvaders listener " + args.UDP_IP + ":" + str(args.UDP_PORT))
-    sock = socket.socket(socket.AF_INET,  # Internet
-                      socket.SOCK_DGRAM)  # UDP
-    sock.bind((args.UDP_IP, args.UDP_PORT))
-    UDP_BUFFER_SIZE = 1024
-    while True:
-        data, addr = sock.recvfrom(UDP_BUFFER_SIZE)  # blocking call
-
-        pixels_in_buffer = len(data) / PIXEL_SIZE
-
-        pixels = bytearray(pixels_in_buffer * PIXEL_SIZE)
-
-        for pixel_index in range(pixels_in_buffer):
-            pixel_to_adjust = bytearray(data[(pixel_index * PIXEL_SIZE):((pixel_index * PIXEL_SIZE) + PIXEL_SIZE)])
-
-            pixel_to_filter = correct_pixel_brightness(pixel_to_adjust)
-            pixels[((pixel_index) * PIXEL_SIZE):] = filter_pixel(pixel_to_filter[:], 1)
-
-        spidev.write(pixels)
-        spidev.flush()
-
-
-def strip():
-    img = Image.open(args.filename).convert("RGB")
-    input_image = img.load()
-    image_width = img.size[0]
-    print "%dx%d pixels" % img.size
-    # Create bytearray for the entire image
-    # R, G, B byte per pixel, plus extra '0' byte at end for latch.
-    print "Allocating..."
-    column = [0 for x in range(image_width)]
-    for x in range(image_width):
-        column[x] = bytearray(args.array_height * PIXEL_SIZE + 1)
-
-    print "Process Image..."
-    for x in range(image_width):
-        for y in range(args.array_height):
-            value = input_image[x, y]
-            y3 = y * 3
-            column[x][y3] = value[0]
-            column[x][y3 + 1] = value[1]
-            column[x][y3 + 2] = value[2]
-
-    print "Displaying..."
-    while True:
-        for x in range(image_width):
-            spidev.write(column[x])
-            spidev.flush()
-            time.sleep(0.001)
-        time.sleep((args.refresh_rate / 1000.0))
-
-
-def array():
-    images = []
-    if ('filelist.txt' in args.filename):
-        with open(args.filename, 'r') as file:
-            for filename in file:
-                filename = filename.rstrip()
-                if not filename:
-                    continue
-                print filename
-                images.append(Image.open(filename).convert("RGB"))
-    else:
-        images.append(Image.open(args.filename).convert("RGB"))
-
-    for img in images:
-        input_image = img.load()
-        print "%dx%d pixels" % img.size
-        print "Reading in array map"
-        pixel_map_csv = csv.reader(open("pixel_map.csv", "rb"))
-        pixel_map = []
-        for p in pixel_map_csv:
-            pixel_map.append(p)
-        if len(pixel_map) != args.array_width * args.array_height:
-            print "Map size error"
-        print "Remapping"
-        value = bytearray(PIXEL_SIZE)
-
-        # Create a byte array ordered according to the pixel map file
-        pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE + 1)
-        for array_index in range(len(pixel_map)):
-            value = bytearray(input_image[int(pixel_map[array_index][0]), int(pixel_map[array_index][1])])
-
-        pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
-        print "Displaying..."
-        spidev.write(pixel_output)
-        spidev.flush()
-        time.sleep((args.refresh_rate) / 1000.0)
-
-
-def pan():
-    img = Image.open(args.filename).convert("RGB")
-    input_image = img.load()
-    image_width = img.size[0]
-    print "%dx%d pixels" % img.size
-    print "Reading in array map"
-    pixel_map_csv = csv.reader(open("pixel_map.csv", "rb"))
-    pixel_map = []
-    for p in pixel_map_csv:
-        pixel_map.append(p)
-    if len(pixel_map) != args.array_width * args.array_height:
-        print "Map size error"
-    print "Remapping"
-
-    # Create a byte array ordered according to the pixel map file
-    pixel_output = bytearray(args.array_width * args.array_height * PIXEL_SIZE + 1)
-    while True:
-        for x_offset in range(image_width - args.array_width):
-            for array_index in range(len(pixel_map)):
-                value = bytearray(input_image[int(int(pixel_map[array_index][0]) + x_offset), int(pixel_map[array_index][1])])
-                pixel_output[(array_index * PIXEL_SIZE):] = filter_pixel(value[:], 1)
-
-        print "Displaying..."
-        spidev.write(pixel_output)
-        spidev.flush()
-        time.sleep((args.refresh_rate) / 1000.0)
 
 
 def all_off():
@@ -248,11 +127,6 @@ def chase():
 gamma = bytearray(256)
 
 
-# Open SPI device, load image in RGB format and get dimensions:
-def load_image():
-    print "Loading..."
-
-
 # Apply Gamma Correction and RGB / GRB reordering
 # Optionally perform brightness adjustment
 def filter_pixel(input_pixel, brightness):
@@ -274,30 +148,12 @@ common_parser = argparse.ArgumentParser(add_help=False)
 common_parser.add_argument('--verbose', action='store_true', dest='verbose', default=True, help='enable verbose mode')
 common_parser.add_argument('--spi_dev', action='store', dest='spi_dev_name', required=False, default='/dev/spidev0.0', help='Set the SPI device descriptor')
 common_parser.add_argument('--refresh_rate', action='store', dest='refresh_rate', required=False, default=500, type=int, help='Set the refresh rate in ms (default 500ms)')
-parser_strip = subparsers.add_parser('strip', parents=[common_parser], help='Stip Mode - Display an image using POV and a LED strip')
-parser_strip.set_defaults(func=strip)
-parser_strip.add_argument('--filename', action='store', dest='filename', required=False, help='Specify the image file eg: hello.png')
-parser_strip.add_argument('--array_height', action='store', dest='array_height', required=True, type=int, default='7', help='Set the Y dimension of your pixel array (height)')
-parser_array = subparsers.add_parser('array', parents=[common_parser], help='Array Mode - Display an image on a pixel array')
-parser_array.set_defaults(func=array)
-parser_array.add_argument('--filename', action='store', dest='filename', required=False, help='Specify the image file eg: hello.png')
-parser_array.add_argument('--array_width', action='store', dest='array_width', required=True, type=int, default='7', help='Set the X dimension of your pixel array (width)')
-parser_array.add_argument('--array_height', action='store', dest='array_height', required=True, type=int, default='7', help='Set the Y dimension of your pixel array (height)')
-parser_pixelinvaders = subparsers.add_parser('pixelinvaders', parents=[common_parser], help='Pixelinvaders Mode - setup pixelpi as a Pixelinvaders slave')
-parser_pixelinvaders.set_defaults(func=pixelinvaders)
-parser_pixelinvaders.add_argument('--udp-ip', action='store', dest='UDP_IP', required=True, help='Used for PixelInvaders mode, listening address')
-parser_pixelinvaders.add_argument('--udp-port', action='store', dest='UDP_PORT', required=True, default=6803, type=int, help='Used for PixelInvaders mode, listening port')
 parser_fade = subparsers.add_parser('fade', parents=[common_parser], help='Fade Mode - Fade colors on all LEDs')
 parser_fade.set_defaults(func=fade)
 parser_fade.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
 parser_chase = subparsers.add_parser('chase', parents=[common_parser], help='Chase Mode - Chase display test mode')
 parser_chase.set_defaults(func=chase)
 parser_chase.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
-parser_pan = subparsers.add_parser('pan', parents=[common_parser], help='Pan Mode - Pan an image across an array')
-parser_pan.set_defaults(func=pan)
-parser_pan.add_argument('--filename', action='store', dest='filename', required=False, help='Specify the image file eg: hello.png')
-parser_pan.add_argument('--array_width', action='store', dest='array_width', required=True, type=int, default='7', help='Set the X dimension of your pixel array (width)')
-parser_pan.add_argument('--array_height', action='store', dest='array_height', required=True, type=int, default='7', help='Set the Y dimension of your pixel array (height)')
 parser_all_on = subparsers.add_parser('all_on', parents=[common_parser], help='All On Mode - Turn all LEDs On')
 parser_all_on.set_defaults(func=all_on)
 parser_all_on.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
