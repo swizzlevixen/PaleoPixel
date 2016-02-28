@@ -1,18 +1,25 @@
+#!/usr/bin/env python
 """
 rpi_ws2801
 
-Adafruit NeoPixel library port to run WS2801 pixels from the Raspberry Pi SPI
+The “PaleoPixel” class is an Adafruit NeoPixel library port
+  to control WS2801 pixels from Raspberry Pi hardware SPI.
+  Also includes “strandtest” functions and a self-test if run as main.
 
 
-Author: Mark Boszko (boszko@gmail.com)
+Author: Mark Boszko (boszko+ws2801@gmail.com)
 
-Raspberry Pi SPI driver code for WS2801 pixels based on PixelPi by Scott Gibson
-https://github.com/scottjgibson/PixelPi
+Raspberry Pi SPI driver code for WS2801 pixels based on Adafruit_LEDpixels.py
+https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code
+
+Python port of NeoPixel library based on the rpi_ws281x library port,
+  by Tony DiCola and Jeremy Garff
+https://github.com/jgarff/rpi_ws281x
 
 
 Usage:
 
-You will need to translate 3.3V SPI logic levels from the Raspberry Pi to 5V.
+You'll need to translate 3.3V SPI logic levels from the Raspberry Pi to 5V.
 Several options are possible, and I have a suggested circuit on my blog post
 that describes this project in more detail:
 
@@ -27,152 +34,184 @@ TODO: blog link
 
 Version History:
 
+0.6 - Complete rewrite
 0.5 - Begin development
 
 """
 
-import argparse
-import csv
-import socket
-import time
+
+import RPi.GPIO as GPIO, time, os
 
 
-# 3 bytes per pixel
-PIXEL_SIZE = 3
+# LED strip configuration:
+LED_COUNT      = 50      # Number of LED pixels.
+LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest (not currently used)
 
-BLACK = bytearray(b'\x00\x00\x00')
-BLUE = bytearray(b'\x00\x00\xff')
-BROWN = bytearray(b'\xa5\x2a\x2a')
-GRAY = bytearray(b'\x80\x80\x80')
-GREY = bytearray(b'\x80\x80\x80')
-GREEN = bytearray(b'\x00\x80\x00')
-OLIVE = bytearray(b'\x80\x80\x00')
-ORANGE = bytearray(b'\xff\xa5\x00')
-RED = bytearray(b'\xff\x00\x00')
-VIOLET = bytearray(b'\xee\x82\xee')
-WHITE = bytearray(b'\xff\xff\xff')
-YELLOW = bytearray(b'\xff\xff\x00')
-RAINBOW = [RED, GREEN, BLUE, YELLOW, VIOLET, ORANGE, GRAY, OLIVE, BROWN]
+#####
+# 
+# PaleoPixel - NeoPixel library port for WS2801 control over RPi hardware SPI
+# 
+#####
+
+def Color(red, green, blue):
+    """Convert the provided red, green, blue color to a 24-bit color value.
+    Each color component should be a value 0-255 where 0 is the lowest intensity
+    and 255 is the highest intensity.
+    """
+    return ((red & 0xFF) << 16) | ((green & 0xFF) << 8) | (blue & 0xFF)
+
+class PaleoPixel(object):
+    def __init__(self, num):
+        """Class to represent a WS2801 LED display.
+        
+        num - number of pixels in the display.
+        """
+        # Create an array for the LED data
+        self._led_data = [0] * num
+
+    def __del__(self):
+        # Clean up memory used by the library when not needed anymore.
+        if self._led_data is not None:
+            self._led_data = None
+
+    def begin(self):
+        """Initialize _led_data to zeroes.
+        Not necessary, since we do this in __init__, but handy.
+        """
+        for i in range(len(self._led_data)):
+            self._led_data[i] = 0
+        self.show()
+        
+    def show(self):
+        """Update the display with the data from the LED buffer."""
+        spidev = file("/dev/spidev0.0", "w")
+        for i in range(len(self._led_data)):
+            spidev.write(chr((self._led_data[i]>>16) & 0xFF))
+            spidev.write(chr((self._led_data[i]>>8) & 0xFF))
+            spidev.write(chr(self._led_data[i] & 0xFF))
+        spidev.close()
+        time.sleep(0.002)
+
+    def setPixelColor(self, n, color):
+        """Set LED at position n to the provided 24-bit color value (in RGB order).
+        """
+        if (n >= len(self._led_data)):
+            return
+        self._led_data[n] = color
+
+    def setPixelColorRGB(self, n, red, green, blue):
+        """Set LED at position n to the provided red, green, and blue color.
+        Each color component should be a value from 0 to 255 (where 0 is the
+        lowest intensity and 255 is the highest intensity).
+        """
+        self.setPixelColor(n, Color(red, green, blue))
+
+    def getPixels(self):
+        """Return an object which allows access to the LED display data as if 
+        it were a sequence of 24-bit RGB values.
+        """
+        return self._led_data
+
+    def numPixels(self):
+        """Return the number of pixels in the display."""
+        return len(self._led_data)
+
+    def getPixelColor(self, n):
+        """Get the 24-bit RGB color value for the LED at position n."""
+        return self._led_data[n]
 
 
-def correct_pixel_brightness(pixel):
-    corrected_pixel = bytearray(3)
-    corrected_pixel[0] = int(pixel[0] / 1.1)
-    corrected_pixel[1] = int(pixel[1] / 1.1)
-    corrected_pixel[2] = int(pixel[2] / 1.3)
+        
+#####
+# 
+# Test functions which animate LEDs in various ways.
+# 
+#####
+         
+def colorWipe(strip, color, wait_ms=50):
+    """Wipe color across display a pixel at a time."""
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, color)
+        strip.show()
+        time.sleep(wait_ms/1000.0)
 
-    return corrected_pixel
+def theaterChase(strip, color, wait_ms=50, iterations=10):
+    """Movie theater light style chaser animation."""
+    for j in range(iterations):
+        for q in range(3):
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, color)
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, 0)
 
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if pos < 85:
+        return Color(pos * 3, 255 - pos * 3, 0)
+    elif pos < 170:
+        pos -= 85
+        return Color(255 - pos * 3, 0, pos * 3)
+    else:
+        pos -= 170
+        return Color(0, pos * 3, 255 - pos * 3)
 
-def all_off():
-    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
-    print "Turning all LEDs Off"
-    for led in range(args.num_leds):
-        pixel_output[led * PIXEL_SIZE:] = filter_pixel(BLACK, 1)
-    spidev.write(pixel_output)
-    spidev.flush()
+def rainbow(strip, wait_ms=20, iterations=1):
+    """Draw rainbow that fades across all pixels at once."""
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((i+j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
 
+def rainbowCycle(strip, wait_ms=20, iterations=5):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel(((i * 256 / strip.numPixels()) + j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
 
-def all_on():
-    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
-    print "Turning all LEDs On"
-    for led in range(args.num_leds):
-        pixel_output[led * PIXEL_SIZE:] = filter_pixel(WHITE, 1)
-    spidev.write(pixel_output)
-    spidev.flush()
+def theaterChaseRainbow(strip, wait_ms=50):
+    """Rainbow movie theater light style chaser animation."""
+    for j in range(256):
+        for q in range(3):
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, wheel((i+j) % 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, 0)
+     
+     
+       
+#####      
+#      
+# Let's test it out!
+#
+#####
 
+# Main program logic follows:
+if __name__ == '__main__':
+    # Create PaleoPixel object with appropriate configuration.
+    strip = PaleoPixel(LED_COUNT)
+    print('strip.__init__')
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
+    print('strip.begin')
 
-def fade():
-    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
-    current_color = bytearray(PIXEL_SIZE)
-    print "Displaying..."
-
+    print('Press Ctrl-C to quit.')
     while True:
-        for color in RAINBOW:
-            for brightness in [x * 0.01 for x in range(0, 100)]:
-                current_color[:] = filter_pixel(color[:], brightness)
-                for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
-                    pixel_output[pixel_offset:] = current_color[:]
-                spidev.write(pixel_output)
-                spidev.flush()
-                time.sleep((args.refresh_rate) / 1000.0)
-            for brightness in [x * 0.01 for x in range(100, 0, -1)]:
-                current_color[:] = filter_pixel(color[:], brightness)
-                for pixel_offset in [(x * 3) for x in range(args.num_leds)]:
-                    pixel_output[pixel_offset:] = current_color[:]
-                spidev.write(pixel_output)
-                spidev.flush()
-                time.sleep((args.refresh_rate) / 1000.0)
-
-
-def chase():
-    pixel_output = bytearray(args.num_leds * PIXEL_SIZE + 3)
-    print "Displaying..."
-    current_color = bytearray(PIXEL_SIZE)
-    pixel_index = 0
-    while True:
-        for current_color[:] in RAINBOW:
-            for pixel_index in range(args.num_leds):
-                pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0.2)
-                pixel_output[((pixel_index - 1) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0.4)
-                pixel_output[((pixel_index) * PIXEL_SIZE):] = filter_pixel(current_color[:], 1)
-                pixel_output += '\x00' * ((args.num_leds - 1 - pixel_index) * PIXEL_SIZE)
-
-                spidev.write(pixel_output)
-                spidev.flush()
-                time.sleep((args.refresh_rate) / 1000.0)
-                pixel_output[((pixel_index - 2) * PIXEL_SIZE):] = filter_pixel(current_color[:], 0)
-
-
-gamma = bytearray(256)
-
-
-# Apply Gamma Correction and RGB / GRB reordering
-# Optionally perform brightness adjustment
-def filter_pixel(input_pixel, brightness):
-    output_pixel = bytearray(PIXEL_SIZE)
-
-    input_pixel[0] = int(brightness * input_pixel[0])
-    input_pixel[1] = int(brightness * input_pixel[1])
-    input_pixel[2] = int(brightness * input_pixel[2])
-
-    output_pixel[0] = gamma[input_pixel[0]]
-    output_pixel[1] = gamma[input_pixel[1]]
-    output_pixel[2] = gamma[input_pixel[2]]
-    return output_pixel
-
-
-parser = argparse.ArgumentParser(add_help=True, version='1.0', prog='pixelpi.py')
-subparsers = parser.add_subparsers(help='sub command help?')
-common_parser = argparse.ArgumentParser(add_help=False)
-common_parser.add_argument('--verbose', action='store_true', dest='verbose', default=True, help='enable verbose mode')
-common_parser.add_argument('--spi_dev', action='store', dest='spi_dev_name', required=False, default='/dev/spidev0.0', help='Set the SPI device descriptor')
-common_parser.add_argument('--refresh_rate', action='store', dest='refresh_rate', required=False, default=500, type=int, help='Set the refresh rate in ms (default 500ms)')
-parser_fade = subparsers.add_parser('fade', parents=[common_parser], help='Fade Mode - Fade colors on all LEDs')
-parser_fade.set_defaults(func=fade)
-parser_fade.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
-parser_chase = subparsers.add_parser('chase', parents=[common_parser], help='Chase Mode - Chase display test mode')
-parser_chase.set_defaults(func=chase)
-parser_chase.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
-parser_all_on = subparsers.add_parser('all_on', parents=[common_parser], help='All On Mode - Turn all LEDs On')
-parser_all_on.set_defaults(func=all_on)
-parser_all_on.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
-parser_all_off = subparsers.add_parser('all_off', parents=[common_parser], help='All Off Mode - Turn all LEDs Off')
-parser_all_off.set_defaults(func=all_off)
-parser_all_off.add_argument('--num_leds', action='store', dest='num_leds', required=True, default=50, type=int,  help='Set the  number of LEDs in the string')
-
-args = parser.parse_args()
-spidev = file(args.spi_dev_name, "wb")
-# Calculate gamma correction table. This includes
-# LPD8806-specific conversion (7-bit color w/high bit set).
-for i in range(256):
-    gamma[i] = int(pow(float(i) / 255.0, 2.5) * 255.0)
-
-args.func()
-
-
-#print "File Name             = %s" % args.filename
-#print "Display Mode          = %s" % args.mode
-#print "SPI Device Descriptor = %s" % args.spi_dev_name
-#print "Refresh Rate          = %s" % args.refresh_rate
-#print "Array Dimensions      = %dx%d" % (args.array_width, args.array_height)
+        # Color wipe animations.
+        colorWipe(strip, Color(255, 0, 0))  # Red wipe
+        colorWipe(strip, Color(0, 255, 0))  # Blue wipe
+        colorWipe(strip, Color(0, 0, 255))  # Green wipe
+        # Theater chase animations.
+        theaterChase(strip, Color(127, 127, 127))  # White theater chase
+        theaterChase(strip, Color(127,   0,   0))  # Red theater chase
+        theaterChase(strip, Color(  0,   0, 127))  # Blue theater chase
+        # Rainbow animations.
+        rainbow(strip)
+        rainbowCycle(strip)
+        theaterChaseRainbow(strip)
