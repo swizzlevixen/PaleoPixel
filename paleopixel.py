@@ -32,13 +32,18 @@ http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-
 
 License:
 
-- Creative Commons Attribution 4.0 International License (CC-BY)
-- http://creativecommons.org/licenses/by/4.0/
+Licensed under The MIT License (MIT). Please see LICENSE.txt for full text
+of the license.
 
 
 Version History:
 
-- 1.0 - 2016-02-27 - Started development and complete rewrite, all in the same day!
+- 1.0.1 - 2016-02-29 - Changed license from CC-BY-4.0 to MIT, due to 
+                       recommendation by Creative Commons not to apply their 
+                       licenses to software. See CC's FAQ for details:
+                       https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software
+- 1.0   - 2016-02-27 - Started development and complete rewrite, all in the 
+                       same day!
 
 """
 

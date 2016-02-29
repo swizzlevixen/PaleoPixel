@@ -29,9 +29,13 @@ http://stationinthemetro.com/2016/02/27/tiki-nook-build-part-2-raspberry-pi-led-
 
 ## License
 
-<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">PaleoPixel</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/bobtiki/PaleoPixel" property="cc:attributionName" rel="cc:attributionURL">Mark Boszko</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.<br />Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code" rel="dct:source">https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code</a>.
+PaleoPixel.py is licensed for used under The MIT License (MIT). Please see LICENSE.txt for full text of the license.
+
+Adafruit_LEDpixels.py is covered under their original license. Please see LICENSE.txt for full text of the license.
 
 ## Version History:
+
+- **1.0.1** - 2016-02-29 - Changed license from CC-BY-4.0 to MIT, due to recommendation by Creative Commons not to apply their licenses to software. See [CC's FAQ](https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software) for details.
 
 - **1.0** - 2016-02-27 - Started development and complete rewrite, all in the same day!
 
